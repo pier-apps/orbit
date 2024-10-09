@@ -3,6 +3,10 @@ use crate::interfaces::{
 };
 use crate::utils::{controller_test_id, minter_test_id, set_controllers, NNS_ROOT_CANISTER_ID};
 use crate::{CanisterIds, TestEnv};
+use alloy::node_bindings::AnvilInstance;
+use alloy::providers::fillers::FillProvider;
+use alloy::providers::Provider;
+use alloy::{node_bindings::Anvil, providers::ProviderBuilder};
 use candid::{CandidType, Encode, Principal};
 use control_panel_api::UploadCanisterModulesInput;
 use ic_ledger_types::{AccountIdentifier, Tokens, DEFAULT_SUBACCOUNT};
@@ -235,8 +239,22 @@ fn install_canisters(
     let upgrader_wasm = get_canister_wasm("upgrader").to_vec();
     let station_wasm = get_canister_wasm("station").to_vec();
     if config.upload_canister_modules {
+        // part 1 (to stay under 2mb)
         let upload_canister_modules_args = UploadCanisterModulesInput {
             station_wasm_module: station_wasm.to_owned(),
+            upgrader_wasm_module: vec![],
+        };
+        env.update_call(
+            control_panel,
+            controller,
+            "upload_canister_modules",
+            Encode!(&upload_canister_modules_args).unwrap(),
+        )
+        .unwrap();
+
+        // part 2 (to stay under 2mb)
+        let upload_canister_modules_args = UploadCanisterModulesInput {
+            station_wasm_module: vec![],
             upgrader_wasm_module: upgrader_wasm.to_owned(),
         };
         env.update_call(
